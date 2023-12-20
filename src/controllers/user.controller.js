@@ -10,8 +10,8 @@ const userService = new UserManager();
 
 
 async function getUserByEmail(email) {
-  // Aquí debes escribir la lógica para buscar un usuario por su correo electrónico en la base de datos
-  // Puedes usar un modelo de Mongoose para interactuar con tu base de datos
+  // Aquí escribir la lógica para buscar un usuario por su correo en la base de datos
+ 
   const user = await usersModel.findOne({ email }); // Suponiendo que tienes un modelo llamado 'User'
 
   return user; // Devuelves el usuario encontrado (o null si no se encontró)
@@ -152,6 +152,40 @@ async function updateUser(req, res) {
     res.status(500).json({ status: "error", error: "Error al actualizar el usuario" });
   }
 }
+
+//actualizar contraseña con email//
+
+async function updatePasswordByEmail (req, res) {
+  const {email, newPassword} = req.body;
+  try {
+    const user = await userDao.getUserByEmail(email);
+
+    if (!user) {
+      return res.status(400).json({error: "No se encuentra el usuario"});
+    }
+
+//comparar la nueva contrasena//
+
+const matchOldPassword = await bcrypt.compare (newPassword, user.password);
+
+if (matchOldPassword) {
+  return res.status(400).json({error: "el nuevo password no debe ser igual al anterior "});
+}
+
+  const hashedPassword = createHash(newPassword);
+  const userUpdate = await userDao.updatePassword (user._id, hashedPassword);
+  if (!userUpdate) {
+    return res.status(500).json({error: "Error al actualizar el password"});
+  }
+
+  return res.status(200).json({messsage: "password actualizado exitosamente"});
+} catch (error) {
+  console.error (`error al buscar al usuario o actualizar p[assword: ${error}`);
+  return res.status (500).json({error: "Error interno del servido"});
+
+     }
+}
+
 
 async function deleteUser(req, res) {
   const { uid } = req.params;

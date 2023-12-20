@@ -33,7 +33,12 @@ const productSchema= new mongoose.Schema({
         default: true 
     },
     availability: 
-    { type: String, enum: ['in_stock', 'out_of_stock'] }
+    { type: String, enum: ['in_stock', 'out_of_stock'] },
+
+    owner: {
+        type: String,
+        default:  "Admin"
+    }
 })
 productSchema.plugin(mongoosePaginate)
 
