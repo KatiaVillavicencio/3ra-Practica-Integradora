@@ -70,7 +70,7 @@ async function registerUserAndMessage(req, res) {
     }
 
     const newCart = await cartModel.create({ user: null, products: [], total: 0 });
-    const newUser = new userModel({ nombre, apellido, email, password: createHash(password), rol: rol || "user", cartId: newCart._id });
+    const newUser = new usersModel({ nombre, apellido, email, password: createHash(password), rol: rol || "user", cartId: newCart._id });
     newUser.user = newUser._id;
     await newUser.save();
 
