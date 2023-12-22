@@ -10,11 +10,11 @@ const userService = new UserManager();
 
 
 async function getUserByEmail(email) {
-  // Aquí escribir la lógica para buscar un usuario por su correo en la base de datos
- 
-  const user = await usersModel.findOne({ email }); // Suponiendo que tienes un modelo llamado 'User'
 
-  return user; // Devuelves el usuario encontrado (o null si no se encontró)
+ 
+  const user = await usersModel.findOne({ email }); 
+
+  return user; // Devuelves el usuario encontrado o null 
 }
 
 // obtener todos los usuarios
@@ -70,7 +70,7 @@ async function registerUserAndMessage(req, res) {
     }
 
     const newCart = await cartModel.create({ user: null, products: [], total: 0 });
-    const newUser = new usersModel({ nombre, apellido, email, password: createHash(password), rol: rol || "user", cartId: newCart._id });
+    const newUser = new userModel({ nombre, apellido, email, password: createHash(password), rol: rol || "user", cartId: newCart._id });
     newUser.user = newUser._id;
     await newUser.save();
 
@@ -89,7 +89,7 @@ async function registerUserAndMessage(req, res) {
   }
 }
 
-// LOGIN
+// Login
 async function loginUser(req, res) {
   const { email, password } = req.body;
   try {
@@ -100,16 +100,16 @@ async function loginUser(req, res) {
       return res.status(401).json({ message: "Usuario o contraseña incorrecta" });
     }
 
-    const token = generateAndSetToken({ email: user.email, nombre: user.nombre, apellido: user.apellido, rol: user.rol });
+    const token = generateToken({ email: user.email, nombre: user.nombre, apellido: user.apellido, rol: user.rol });
     res.cookie("token", token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
 
     const userCart = await cartModel.findById(user.cartId);
 
     logger.info("Inicio de sesión exitoso para el usuario: " + user.email);
     logger.info("Token generado para el usuario: " + token);
-   
-   
+    logger.info("rol del usuario: " + user.rol);
 
+   
     res.status(200).json({ token, userCart });
   } catch (error) {
     res.status(500).json({ error: "Error al ingresar " + error.message });
@@ -155,37 +155,39 @@ async function updateUser(req, res) {
 
 //actualizar contraseña con email//
 
-async function updatePasswordByEmail (req, res) {
-  const {email, newPassword} = req.body;
+async function updatePasswordByEmail(req, res) {
+  const { email, newPassword } = req.body;
+
   try {
-    const user = await userDao.getUserByEmail(email);
+    const user = await UserManager.getUserByEmail(email);
 
     if (!user) {
-      return res.status(400).json({error: "No se encuentra el usuario"});
+      return res.status(400).json({ error: "No se encontró el usuario" });
+    }
+    
+  ////comparar la nueva contrasena//
+
+    const matchOldPassword = await bcrypt.compare(newPassword, user.password);
+    console.log(matchOldPassword)
+    if (matchOldPassword) {
+      return res.status(400).json({ error: "el nuevo password no debe ser igual al anterior "});
+      
     }
 
-//comparar la nueva contrasena//
+    const hashedPassword = createHash(newPassword); /* await bcrypt.hash(newPassword, saltRounds); */
 
-const matchOldPassword = await bcrypt.compare (newPassword, user.password);
-
-if (matchOldPassword) {
-  return res.status(400).json({error: "el nuevo password no debe ser igual al anterior "});
-}
-
-  const hashedPassword = createHash(newPassword);
-  const userUpdate = await userDao.updatePassword (user._id, hashedPassword);
-  if (!userUpdate) {
-    return res.status(500).json({error: "Error al actualizar el password"});
+    const userUpdate = await UserManager.updatePassword(user._id, hashedPassword);
+    if (!userUpdate) {
+      return res.status(500).json({ error: "Error al actualizar el password" });
+    }
+b
+    
+    return res.status(200).json({ message: "Contraseña actualizada correctamente" });
+  } catch (error) {
+    console.error(`Error al buscar al usuario o actualizar la contraseña: ${error}`);
+    return res.status(500).json({ error: "Error interno del servidor" });
   }
-
-  return res.status(200).json({messsage: "password actualizado exitosamente"});
-} catch (error) {
-  console.error (`error al buscar al usuario o actualizar p[assword: ${error}`);
-  return res.status (500).json({error: "Error interno del servido"});
-
-     }
 }
-
 
 async function deleteUser(req, res) {
   const { uid } = req.params;
@@ -198,6 +200,75 @@ async function deleteUser(req, res) {
   }
 }
 
+
+async function recuperacionCorreo(req, res) {
+  const { email } = req.body; // Suponiendo que el campo de correo electrónico se envía desde el formulario de login
+
+  try {
+    const usuario = await UserManager.getUserByEmail(email);
+    if (!usuario) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    //generar token para expirar correo de reestablecimiento de pass
+    
+    const token = generateTokenRecovery({ email: usuario.email });
+    if (!token) {
+      return res.status(500).json({ message: 'Error al generar el token.' });
+    }
+
+    logger.info("token de recoverypass:" + token)
+    // Link de recuperación
+    const recoveryLink = `http://localhost:8080/reset_password/${token}`;
+
+    // Contenido del email
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Recuperación de contraseña',
+      text: `Hola ${usuario.nombre},\n\nPara restablecer tu contraseña, haz clic en el siguiente enlace:\n\n${recoveryLink}\n\nSi no solicitaste un cambio de contraseña, ignora este mensaje.`,
+    };
+
+    // Enviar el correo
+    transporter.sendMail(mailOptions, (error) => {
+      if (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Hubo un error al enviar el correo.' });
+      }
+      return res.json({ message: 'Se ha enviado un enlace de recuperación a tu correo electrónico.' });
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Error al procesar la solicitud.' });
+  }
+}
+
+async function cambiarRol(req, res) {
+  const { uid } = req.params;
+  try {
+    const user = await UserManager.getUserById(uid)
+
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    // Cambiar el rol según la lógica deseada
+    if (user.rol === "user") {
+      user.rol = "premium";
+    } else if (user.rol === "premium") {
+      user.rol = "user";
+    }
+
+    const updatedUser = await user.save(); // Guardar el usuario con el nuevo rol
+
+    res.json({ message: "Rol de usuario actualizado", user: updatedUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "error", error: "Error al cambiar el rol del usuario" });
+  }
+}
+
+
 module.exports = {
   registerUserAndMessage,
   getUserById,
@@ -209,4 +280,7 @@ module.exports = {
   getAllUsers,
   createUser,
   getUserByEmail,
+  recuperacionCorreo,
+  updatePasswordByEmail,
+  cambiarRol,
 };
