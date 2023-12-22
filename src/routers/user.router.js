@@ -2,11 +2,11 @@ import { Router } from "express";
 //import { Users } from '../dao/factory.js'
 import UserDTO from "../dto/user.dto.js";
 import { userService } from "../repositories/index.js";
-import Users from "../dao/classes/userManagerMongo.js"
+import UserManager  from "../dao/classes/userManagerMongo.js"
 
 const userRouter = Router()
 
-const usersMongo = new Users()
+const usersMongo = new UserManager()
 
 userRouter.get("/", async (req, res) => {
     req.logger.info('Se cargan usuarios');
