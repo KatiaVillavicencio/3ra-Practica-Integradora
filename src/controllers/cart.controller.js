@@ -1,6 +1,6 @@
 import CartManager from "../dao/classes/cartManagerMongo";
 import mongoose from "mongoose";
-import ticketsModel from "../dao/models/tickets.model.js";
+import ticketModel from "../dao/models/tickets.model.js";
 const { AddProductToCart } = require("../Errors/customErrors.js");
 const { v4: uuidv4 } = require('uuid');
 const cookieParser = require('cookie-parser');
@@ -14,8 +14,6 @@ import logger from "../../logger.js";
 
 //se instancia la clase del carrito 
 const cartService = new CartManager();
-
-// funcion para obtener un carrito especifico segun id 
 
 
 //INCOMPLETOOOOruta para sacar el id del carrito del usuario para usar con el boton micarrito INCOMPLETOOOO
