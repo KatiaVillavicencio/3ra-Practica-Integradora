@@ -1,4 +1,4 @@
-import { Router } from 'express';
+/*import { Router } from 'express';
 import ProductManager from "../dao/classes/productManagerMongo.js"
 const pm = new ProductManager()
 
@@ -20,4 +20,4 @@ res.render("chat")
 
 
 
-export default routerV
+export default routerV*/

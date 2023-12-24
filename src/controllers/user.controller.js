@@ -223,7 +223,7 @@ async function recuperacionCorreo(req, res) {
 
     // Contenido del email
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: '<katiamvv5@gmail.com>',
       to: email,
       subject: 'Recuperación de contraseña',
       text: `Hola ${usuario.nombre},\n\nPara restablecer tu contraseña, haz clic en el siguiente enlace:\n\n${recoveryLink}\n\nSi no solicitaste un cambio de contraseña, ignora este mensaje.`,

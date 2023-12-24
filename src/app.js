@@ -15,7 +15,7 @@ import loggerMiddleware from '../loggerMiddleware.js';
 //routes
 import routerP from './routers/products.router.js';
 import routerC from './routers/carts.router.js';
-import routerV from './routers/views.router.js';
+//import routerV from './routers/views.router.js';//
 import userRouter from './routers/user.router.js';
 import ticketRouter from './routers/tickets.router.js';
 import routerL from './routers/logger.router.js';
@@ -107,7 +107,7 @@ app.use (passport.initialize());
 app.use (passport.session());
 
 //Rutas
-app.use('/', routerV); //view//
+//app.use('/', routerV); //view//
 app.use("api/products", routerP)
 app.use("api/carts", routerC)
 app.use("/users", userRouter)
@@ -121,7 +121,7 @@ app.use("/loggerTest", routerL) //::::://ruta Logger//::::::
 const socketServer = new Server(httpServer)
 socketProducts(socketServer)
 socketChat(socketServer)
-socketEmail(socketServer)
+//socketEmail(socketServer)//
 
 
 //Front
