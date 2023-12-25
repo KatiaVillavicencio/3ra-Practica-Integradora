@@ -8,14 +8,15 @@ import passport from 'passport';
 import connectToDB from "./config/server.config.js"
 import {__dirname, authorization, passportCall} from "./utils.js"
 import initializePassword from './config/passport.config.js';
-import mongoose from 'mongoose'
+import mongoose from 'mongoose' 
 import loggerMiddleware from '../loggerMiddleware.js';
+
 
 
 //routes
 import routerP from './routers/products.router.js';
 import routerC from './routers/carts.router.js';
-//import routerV from './routers/views.router.js';//
+import routerV from './routers/views.router.js';
 import userRouter from './routers/user.router.js';
 import ticketRouter from './routers/tickets.router.js';
 import routerL from './routers/logger.router.js';
@@ -23,10 +24,12 @@ import routerL from './routers/logger.router.js';
 //socket.io
 import socketProducts from "./listeners/socketProducts.js"
 import socketChat from './listeners/socketChat.js';
-import socketEmail from './listeners/socketEmail.js';
+//import socketEmail from './listeners/socketEmail.js';
 
 //Jwt/
-import {generateAndSetToken} from "./config/token.config.js"
+//import {generateAndSetToken} from "./config/token.config.js"//
+import {generateAndSetToken, generateAndSetTokenEmail, 
+    validateTokenResetPass, getEmailFromToken, getEmailFromTokenLogin} from "./config/token.config.js"
 import { Strategy as JwtStrategy } from 'passport-jwt';
 import { ExtractJwt as ExtractJwt } from 'passport-jwt';
 
@@ -107,7 +110,7 @@ app.use (passport.initialize());
 app.use (passport.session());
 
 //Rutas
-//app.use('/', routerV); //view//
+app.use('/', routerV); //view
 app.use("api/products", routerP)
 app.use("api/carts", routerC)
 app.use("/users", userRouter)
@@ -172,6 +175,56 @@ app.get('/admin',passportCall('jwt'), authorization('user'),(req,res) =>{
         res.render('admin', { products: prodAll });
     });
 })
+
+
+//Recuperar contrasena//
+app.post('/forgot-password', async (req, res) => {
+    const { email } = req.body;
+    const emailToFind = email;
+    const userExists = await users.findEmail({ email: emailToFind });
+    if (!userExists) {
+      req.logger.error("Error al reestablecer contraseña usuario "+email+" no existe")
+      console.error("Error al reestablecer contraseña usuario "+email+" no existe")
+      res.json("Error al reestablecer contraseña usuario "+email+" no existe" );
+      return res.status(401).json({ message: "Error al reestablecer contraseña" });
+    }
+    // Crear y firmar el token JWT con una expiración de 1 hora
+    const token = generateAndSetTokenEmail(email)
+  
+    // Configurar el enlace de restablecimiento de contraseña
+    const resetLink = `http://localhost:8080/reset-password?token=${token}`;
+  
+    let result = transport.sendMail({
+        from:'<katiamvv5@gmail.com>',
+        to:email,
+        subject:'Restablecer contraseña',
+        html:`Haz clic en el siguiente enlace para restablecer tu contraseña: <a href="${resetLink}">Restablecer contraseña</a>`,
+        attachments:[]
+    })
+    if(result)
+    {
+        req.logger.info("Se envia correo para reestablecer contraseña a correo" + emailToFind);
+        res.json("Correo para reestablecer contraseña fue enviado correctamente a "+email);
+    }
+    else
+    {
+        req.logger.error("Error al enviar correo para reestablecer contraseña");
+        console.error("Error al intentar reestablecer contraseña");
+        res.json("Error al intentar reestablecer contraseña");
+    }
+  });
+  app.get('/reset-password', async (req, res) => {
+    const { token} = req.query;
+    const validate = validateTokenResetPass(token)
+    const emailToken = getEmailFromToken(token)
+    if(validate){
+        res.render('resetPassword', { token , email: emailToken});
+    }
+    else{
+        res.sendFile('index.html', { root: app.get('views') });
+    }
+  });
+
 
 //mocking//
 
